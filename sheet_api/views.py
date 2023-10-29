@@ -2,7 +2,7 @@ from django.contrib.auth.models import User, Group
 from rest_framework import viewsets
 from rest_framework import permissions
 
-from sheet_musicle_server.sheet_musicle_server.serializers import (
+from sheet_api.serializers import (
     UserSerializer,
     GroupSerializer,
 )
