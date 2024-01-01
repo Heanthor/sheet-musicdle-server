@@ -48,3 +48,16 @@ class WorkSerializer(serializers.HyperlinkedModelSerializer):
             "composer",
             "last_scanned",
         ]
+
+
+class WorkWithoutComposerSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Work
+        fields = [
+            "id",
+            "work_title",
+            "composition_year",
+            "opus",
+            "opus_number",
+            "last_scanned",
+        ]

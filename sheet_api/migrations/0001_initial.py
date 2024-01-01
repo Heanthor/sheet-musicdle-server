@@ -85,10 +85,10 @@ class Migration(migrations.Migration):
                     "type",
                     models.CharField(
                         choices=[
-                            (sheet_api.models.PuzzleTypes["Piano"], "Piano"),
-                            (sheet_api.models.PuzzleTypes["Violin"], "Violin"),
-                            (sheet_api.models.PuzzleTypes["Cello"], "Cello"),
-                            (sheet_api.models.PuzzleTypes["Orchestral"], "Orchestral"),
+                            ("Piano", "Piano"),
+                            ("Violin", "Violin"),
+                            ("Cello", "Cello"),
+                            ("Orchestral", "Orchestral"),
                         ],
                         max_length=20,
                     ),

@@ -9,6 +9,7 @@ from sheet_api.serializers import (
     PuzzleSerializer,
     WorkSerializer,
     ComposerSerializer,
+    WorkWithoutComposerSerializer,
 )
 
 
@@ -57,7 +58,7 @@ class WorkViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class WorkFilterView(generics.ListAPIView):
-    serializer_class = WorkSerializer
+    serializer_class = WorkWithoutComposerSerializer
 
     def get_queryset(self):
         composer_id = self.kwargs.get("composer_id", None)

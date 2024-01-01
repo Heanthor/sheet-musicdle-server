@@ -2,25 +2,25 @@ import enum
 
 from django.db import models
 from django.utils import timezone
-
+from django.utils.translation import gettext_lazy as _
 
 # Create your models here.
 
 
-class PuzzleTypes(enum.Enum):
-    Piano = "Piano"
-    Violin = "Violin"
-    Cello = "Cello"
-    Orchestral = "Orchestral"
-
-
 class Puzzle(models.Model):
-    type = models.CharField(
-        max_length=20, choices=[(tag, tag.value) for tag in PuzzleTypes]
-    )
+    class PuzzleType(models.TextChoices):
+        PIANO = "P", _("Piano")
+        VIOLIN = "V", _("Violin")
+        CELLO = "C", _("Cello")
+        ORCHESTRAL = "O", _("Orchestral")
+
+    type = models.CharField(max_length=5, choices=PuzzleType.choices)
     date = models.DateField()
     answer = models.ForeignKey("Work", on_delete=models.CASCADE)
     sheet_image_url = models.CharField(max_length=200)
+
+    def __str__(self):
+        return f"{self.date}: {self.answer}"
 
 
 class Composer(models.Model):
@@ -42,6 +42,9 @@ class Composer(models.Model):
     first_scanned = models.DateTimeField(auto_now_add=True)
     last_scanned = models.DateTimeField(default=timezone.now)
 
+    def __str__(self):
+        return f"{self.full_name}"
+
 
 class Work(models.Model):
     class Meta:
@@ -61,3 +64,6 @@ class Work(models.Model):
 
     first_scanned = models.DateTimeField(auto_now_add=True)
     last_scanned = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.composer.last_name}: {self.work_title} ({self.composition_year})"

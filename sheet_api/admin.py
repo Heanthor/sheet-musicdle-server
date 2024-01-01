@@ -26,7 +26,29 @@ class MyAdminSite(admin.AdminSite):
 admin_site = MyAdminSite(name="sheet_api_admin")
 admin_site.index_template = "admin/sheet_api/index.html"
 
+
+class PuzzleAdmin(admin.ModelAdmin):
+    list_display = ("type", "answer", "date", "sheet_image_url")
+    search_fields = ("date", "answer")
+
+    raw_id_fields = ("answer",)
+
+
+class WorkAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "composer",
+        "work_title",
+        "opus",
+        "opus_number",
+        "composition_year",
+    )
+    search_fields = ("work_title", "opus", "opus_number")
+    list_filter = ("composer",)
+    ordering = ("composer", "composition_year")
+
+
 # Register your models here.
-admin_site.register(Puzzle)
 admin_site.register(Composer)
-admin_site.register(Work)
+admin_site.register(Work, WorkAdmin)
+admin_site.register(Puzzle, PuzzleAdmin)
