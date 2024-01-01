@@ -27,16 +27,25 @@ admin_site = MyAdminSite(name="sheet_api_admin")
 admin_site.index_template = "admin/sheet_api/index.html"
 
 
+def count_of_works(obj):
+    return obj.work_set.count()
+
+
+class ComposerAdmin(admin.ModelAdmin):
+    list_display = ("full_name", count_of_works)
+
+
 class PuzzleAdmin(admin.ModelAdmin):
     list_display = ("type", "answer", "date", "sheet_image_url")
     search_fields = ("date", "answer")
 
+    list_filter = ("type",)
+    ordering = ("type", "date")
     raw_id_fields = ("answer",)
 
 
 class WorkAdmin(admin.ModelAdmin):
     list_display = (
-        "id",
         "composer",
         "work_title",
         "opus",
@@ -49,6 +58,6 @@ class WorkAdmin(admin.ModelAdmin):
 
 
 # Register your models here.
-admin_site.register(Composer)
+admin_site.register(Composer, ComposerAdmin)
 admin_site.register(Work, WorkAdmin)
 admin_site.register(Puzzle, PuzzleAdmin)

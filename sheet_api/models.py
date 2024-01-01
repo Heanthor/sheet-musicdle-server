@@ -14,6 +14,14 @@ class Puzzle(models.Model):
         CELLO = "C", _("Cello")
         ORCHESTRAL = "O", _("Orchestral")
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["type", "date"],
+                name="unique_type_date",
+            )
+        ]
+
     type = models.CharField(max_length=5, choices=PuzzleType.choices)
     date = models.DateField()
     answer = models.ForeignKey("Work", on_delete=models.CASCADE)
