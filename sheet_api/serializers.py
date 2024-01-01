@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User, Group
 from rest_framework import serializers
 
-from sheet_api.models import Puzzle
+from sheet_api.models import Puzzle, Work, Composer
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -19,4 +19,32 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
 class PuzzleSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Puzzle
-        fields = ["date", "answer", "sheet_image_url"]
+        fields = ["id", "date", "answer", "sheet_image_url"]
+
+
+class ComposerSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Composer
+        fields = [
+            "id",
+            "full_name",
+            "first_name",
+            "last_name",
+            "born_year",
+            "died_year",
+            "last_scanned",
+        ]
+
+
+class WorkSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Work
+        fields = [
+            "id",
+            "work_title",
+            "composition_year",
+            "opus",
+            "opus_number",
+            "composer",
+            "last_scanned",
+        ]

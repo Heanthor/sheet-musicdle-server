@@ -22,13 +22,18 @@ from sheet_api import api_views
 from sheet_api.views import trigger_scan
 
 router = routers.DefaultRouter()
+# "get all" routes
 router.register(r"users", api_views.UserViewSet)
 router.register(r"groups", api_views.GroupViewSet)
+
 router.register(r"puzzles", api_views.PuzzleViewSet)
+router.register(r"composers", api_views.ComposerViewSet)
+router.register(r"works", api_views.WorkViewSet)
 
 urlpatterns = [
     path("admin/", admin_site.urls),
     path("admin/scan", trigger_scan),
-    path("", include(router.urls)),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
+    path("api/", include(router.urls)),
+    path("api/works/<int:composer_id>", api_views.WorkFilterView.as_view()),
 ]
