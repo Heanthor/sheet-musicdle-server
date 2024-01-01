@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 import re
 
@@ -8,6 +9,11 @@ import requests
 from bs4 import BeautifulSoup
 
 import argparse
+
+from django.db import IntegrityError
+from django.utils import timezone
+
+from sheet_api.models import Composer, Work
 
 COMPOSERS_FILE = "composers.json"
 
@@ -434,6 +440,48 @@ def parse_composer_imslp(composer: str) -> list[ScrapedWork]:
 
 def parse_composer(composer: str) -> list[ScrapedWork] | None:
     return parse_composer_imslp(composer)
+
+
+def scrape_all_composers():
+    with open(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), COMPOSERS_FILE), "r"
+    ) as f:
+        composer_list = json.loads(f.read())
+        for composer in composer_list:
+            print("Scraping composer: " + composer)
+            works = parse_composer(composer)
+            if works is None:
+                continue
+
+            save_composer_works(works)
+
+
+def save_composer_works(works: list[ScrapedWork]):
+    for work in works:
+        composer, created = Composer.objects.get_or_create(
+            full_name=work.composer_fullname,
+            first_name=work.composer_firstname,
+            last_name=work.composer_lastname,
+        )
+        if created:
+            print("Added composer: " + work.composer_fullname)
+
+        work_title = work.work_title
+        if len(work.work_title) > 200:
+            work_title = work.work_title[:197] + "..."
+        try:
+            _, created = Work.objects.update_or_create(
+                work_title=work_title,
+                composition_year=work.composition_year,
+                opus=work.opus,
+                opus_number=work.opus_number,
+                composer=composer,
+                defaults={"last_scanned": timezone.now()},
+            )
+            if created:
+                print("Added work: " + work.work_title)
+        except IntegrityError as e:
+            print("Found duplicate work, skipping: " + str(e))
 
 
 if __name__ == "__main__":

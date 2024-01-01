@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.template.response import TemplateResponse
 from django.urls import path
 
-from sheet_api.models import Puzzle, ComposerWork, Composer, Work
+from sheet_api.models import Puzzle, Composer, Work
+from sheet_api.scraper.scraper import scrape_all_composers
 
 
 class MyAdminSite(admin.AdminSite):
@@ -12,7 +13,7 @@ class MyAdminSite(admin.AdminSite):
         return my_urls + urls
 
     def my_view(self, request):
-        # ...
+        scrape_all_composers()
         context = dict(
             # Include common variables for rendering the admin template.
             self.each_context(request),
@@ -27,6 +28,5 @@ admin_site.index_template = "admin/sheet_api/index.html"
 
 # Register your models here.
 admin_site.register(Puzzle)
-admin_site.register(ComposerWork)
 admin_site.register(Composer)
 admin_site.register(Work)

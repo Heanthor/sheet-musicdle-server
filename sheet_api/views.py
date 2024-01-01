@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-from sheet_api.scraper import parse_composer
+from sheet_api.scraper.scraper import parse_composer
 
 
 def trigger_scan(request):
