@@ -23,7 +23,6 @@ print("Starting with env: " + ENV)
 SECRET_KEY = "django-insecure-)q$w3sa%_6u$(f5p%*gknca44qz09&!23w!qn)j@#460^(_pf("
 if ENV == "prod":
     SECRET_KEY = os.getenv("SM_SECRET_KEY")
-    SECURE_SSL_REDIRECT = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
