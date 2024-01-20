@@ -33,7 +33,8 @@ if ENV == "prod":
 
 ALLOWED_HOSTS = []
 if ENV == "prod":
-    ALLOWED_HOSTS = ["sheet-musicle.com", "www.sheet-musicle.com"]
+    # TODO: remove wildcard
+    ALLOWED_HOSTS = ["sheet-musicle.com", "www.sheet-musicle.com", "*"]
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
