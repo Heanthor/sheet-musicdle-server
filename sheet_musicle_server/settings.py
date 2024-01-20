@@ -15,7 +15,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV = os.getenv("SM_ENV", "dev")
-
+print("Starting with env: " + ENV)
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
@@ -23,7 +23,6 @@ ENV = os.getenv("SM_ENV", "dev")
 SECRET_KEY = "django-insecure-)q$w3sa%_6u$(f5p%*gknca44qz09&!23w!qn)j@#460^(_pf("
 if ENV == "prod":
     SECRET_KEY = os.getenv("SM_SECRET_KEY")
-    SECURE_SSL_HOST = True
     SECURE_SSL_REDIRECT = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -34,7 +33,7 @@ if ENV == "prod":
 ALLOWED_HOSTS = []
 if ENV == "prod":
     # TODO: remove wildcard
-    ALLOWED_HOSTS = ["sheet-musicle.com", "www.sheet-musicle.com", "*"]
+    ALLOWED_HOSTS = ["sheet-musicle.com", "api.sheet-musicle.com", "*"]
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
