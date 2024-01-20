@@ -14,19 +14,29 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+ENV = os.getenv("SM_ENV", "dev")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-)q$w3sa%_6u$(f5p%*gknca44qz09&!23w!qn)j@#460^(_pf("
+if ENV == "prod":
+    SECRET_KEY = os.getenv("SM_SECRET_KEY")
+    SECURE_SSL_HOST = True
+    SECURE_SSL_REDIRECT = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+if ENV == "prod":
+    DEBUG = False
 
 ALLOWED_HOSTS = []
+if ENV == "prod":
+    ALLOWED_HOSTS = ["sheet-musicle.com", "www.sheet-musicle.com"]
 
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Application definition
 
@@ -75,14 +85,26 @@ WSGI_APPLICATION = "sheet_musicle_server.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
+db_dict = {
+    "ENGINE": "django.db.backends.postgresql",
+    "OPTIONS": {
+        "service": "sheet_musicle",
+        "passfile": "/Users/reedtrevelyan/.pgpass",
+    },
+}
+
+if ENV == "prod":
+    db_dict = {
         "ENGINE": "django.db.backends.postgresql",
-        "OPTIONS": {
-            "service": "sheet_musicle",
-            "passfile": "/Users/reedtrevelyan/.pgpass",
-        },
+        "NAME": "sheet_musicle",
+        "USER": os.getenv("SM_DB_USER"),
+        "PASSWORD": os.getenv("SM_DB_PASS"),
+        "HOST": os.getenv("SM_DB_HOST"),
+        "PORT": 5432,
     }
+
+DATABASES = {
+    "default": db_dict,
 }
 
 
