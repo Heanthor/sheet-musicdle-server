@@ -1,6 +1,9 @@
 from django.contrib.auth.models import User, Group
 from rest_framework import viewsets, generics
 from rest_framework import permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db.models import Max, Min
 
 from sheet_api.models import Puzzle, Work, Composer
 from sheet_api.serializers import (
@@ -68,3 +71,18 @@ class WorkFilterView(generics.ListAPIView):
             queryset = Work.objects.all()
 
         return queryset
+
+
+class ComposerWorkRangeView(APIView):
+    def get(self, request, **kwargs):
+        composer_id = kwargs.get("composer_id", None)
+        works_agg = Work.objects.filter(composer_id=composer_id).aggregate(
+            Min("composition_year"), Max("composition_year")
+        )
+
+        return Response(
+            {
+                "min": works_agg["composition_year__min"],
+                "max": works_agg["composition_year__max"],
+            }
+        )

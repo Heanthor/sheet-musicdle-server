@@ -36,4 +36,8 @@ urlpatterns = [
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("api/", include(router.urls)),
     path("api/works/<int:composer_id>", api_views.WorkFilterView.as_view()),
+    path(
+        "api/composers/<int:composer_id>/range",
+        api_views.ComposerWorkRangeView.as_view(),
+    ),
 ]
