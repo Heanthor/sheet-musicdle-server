@@ -40,4 +40,8 @@ urlpatterns = [
         "api/composers/<int:composer_id>/range",
         api_views.ComposerWorkRangeView.as_view(),
     ),
+    path(
+        "api/puzzles/<str:category>/latest",
+        api_views.LatestPuzzleByCategoryView.as_view(),
+    ),
 ]

@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User, Group
-from rest_framework import viewsets, generics
+from rest_framework import viewsets, generics, status
 from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -86,3 +86,26 @@ class ComposerWorkRangeView(APIView):
                 "max": works_agg["composition_year__max"],
             }
         )
+
+
+class LatestPuzzleByCategoryView(APIView):
+    def get(self, request, **kwargs):
+        try:
+            category = self.kwargs.get("category", None)
+            try:
+                choice = Puzzle.PuzzleType[category.upper()]
+            except KeyError:
+                return Response(
+                    {"detail": "Puzzle category not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            puzzle = Puzzle.objects.filter(type=choice).latest("date")
+
+            serializer = PuzzleSerializer(puzzle, context={"request": request})
+
+            # Return the serialized data
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Puzzle.DoesNotExist:
+            return Response(
+                {"detail": "Puzzle not found."}, status=status.HTTP_404_NOT_FOUND
+            )

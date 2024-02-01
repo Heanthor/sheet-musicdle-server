@@ -16,10 +16,11 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
         fields = ["url", "name"]
 
 
-class PuzzleSerializer(serializers.HyperlinkedModelSerializer):
+class PuzzleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Puzzle
         fields = ["id", "date", "answer", "sheet_image_url"]
+        depth = 1
 
 
 class ComposerSerializer(serializers.HyperlinkedModelSerializer):
