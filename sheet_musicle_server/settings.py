@@ -33,6 +33,12 @@ ALLOWED_HOSTS = []
 if ENV == "prod":
     # TODO: remove wildcard
     ALLOWED_HOSTS = ["sheet-musicle.com", "api.sheet-musicle.com", "*"]
+    CORS_ALLOWED_ORIGINS = [
+        "https://sheet-musicle.com",
+        "https://api.sheet-musicle.com",
+    ]
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
@@ -48,9 +54,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",

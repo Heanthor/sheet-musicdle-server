@@ -20,10 +20,10 @@ class PuzzleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Puzzle
         fields = ["id", "date", "answer", "sheet_image_url"]
-        depth = 1
+        depth = 2
 
 
-class ComposerSerializer(serializers.HyperlinkedModelSerializer):
+class ComposerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Composer
         fields = [
@@ -37,7 +37,7 @@ class ComposerSerializer(serializers.HyperlinkedModelSerializer):
         ]
 
 
-class WorkSerializer(serializers.HyperlinkedModelSerializer):
+class WorkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Work
         fields = [
@@ -51,7 +51,7 @@ class WorkSerializer(serializers.HyperlinkedModelSerializer):
         ]
 
 
-class WorkWithoutComposerSerializer(serializers.HyperlinkedModelSerializer):
+class WorkWithoutComposerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Work
         fields = [
