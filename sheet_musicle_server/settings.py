@@ -39,6 +39,7 @@ if ENV == "prod":
     ]
 else:
     CORS_ALLOW_ALL_ORIGINS = True
+    DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF = False
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
@@ -67,7 +68,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.gzip.GZipMiddleware",
+    "django_cprofile_middleware.middleware.ProfilerMiddleware",
 ]
+
 
 ROOT_URLCONF = "sheet_musicle_server.urls"
 

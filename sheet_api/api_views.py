@@ -62,6 +62,8 @@ class WorkViewSet(viewsets.ReadOnlyModelViewSet):
 
 class WorkFilterView(generics.ListAPIView):
     serializer_class = WorkWithoutComposerSerializer
+    permission_classes = []
+    authentication_classes = []
 
     def get_queryset(self):
         composer_id = self.kwargs.get("composer_id", None)
@@ -74,6 +76,9 @@ class WorkFilterView(generics.ListAPIView):
 
 
 class ComposerWorkRangeView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
     def get(self, request, **kwargs):
         composer_id = kwargs.get("composer_id", None)
         works_agg = Work.objects.filter(composer_id=composer_id).aggregate(
@@ -89,6 +94,9 @@ class ComposerWorkRangeView(APIView):
 
 
 class LatestPuzzleByCategoryView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
     def get(self, request, **kwargs):
         try:
             category = self.kwargs.get("category", None)
