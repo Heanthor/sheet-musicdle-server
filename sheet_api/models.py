@@ -22,6 +22,8 @@ class Puzzle(models.Model):
             )
         ]
 
+        indexes = [models.Index(fields=["type", "date"])]
+
     type = models.CharField(max_length=5, choices=PuzzleType.choices)
     date = models.DateField()
     answer = models.ForeignKey("Work", on_delete=models.CASCADE)
