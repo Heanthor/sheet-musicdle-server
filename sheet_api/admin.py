@@ -1,7 +1,10 @@
 from django.contrib import admin
+
+from django.forms import forms
 from django.template.response import TemplateResponse
 from django.urls import path
 
+from sheet_api.forms import PuzzleForm
 from sheet_api.models import Puzzle, Composer, Work
 from sheet_api.scraper.scraper import scrape_all_composers
 
@@ -36,6 +39,8 @@ class ComposerAdmin(admin.ModelAdmin):
 
 
 class PuzzleAdmin(admin.ModelAdmin):
+    form = PuzzleForm
+
     list_display = ("type", "answer", "date", "sheet_image_url")
     search_fields = ("date", "answer")
 
