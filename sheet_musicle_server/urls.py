@@ -44,4 +44,8 @@ urlpatterns = [
         "api/puzzles/<str:category>/latest",
         api_views.LatestPuzzleByCategoryView.as_view(),
     ),
+    path(
+        "api/puzzles/<str:category>/<int:sequence_number>",
+        api_views.PuzzleBySequenceNumberView.as_view(),
+    ),
 ]

@@ -17,10 +17,15 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class PuzzleSerializer(serializers.ModelSerializer):
+    sequence_number = serializers.SerializerMethodField()
+
     class Meta:
         model = Puzzle
-        fields = ["id", "date", "answer", "sheet_image_url"]
+        fields = ["id", "date", "answer", "sheet_image_url", "sequence_number"]
         depth = 2
+
+    def get_sequence_number(self, obj: Puzzle):
+        return Puzzle.objects.filter(type=obj.type, date__lte=obj.date).count()
 
 
 class ComposerSerializer(serializers.ModelSerializer):

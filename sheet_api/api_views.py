@@ -104,15 +104,57 @@ class LatestPuzzleByCategoryView(APIView):
                 choice = Puzzle.PuzzleType[category.upper()]
             except KeyError:
                 return Response(
-                    {"detail": "Puzzle category not found."},
-                    status=status.HTTP_404_NOT_FOUND,
+                    {"detail": "Invalid puzzle category"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
             puzzle = Puzzle.objects.filter(type=choice).latest("date")
 
             serializer = PuzzleSerializer(puzzle, context={"request": request})
 
-            # Return the serialized data
             return Response(serializer.data, status=status.HTTP_200_OK)
+        except Puzzle.DoesNotExist:
+            return Response(
+                {"detail": "Puzzle not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class PuzzleBySequenceNumberView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request, **kwargs):
+        try:
+            category = self.kwargs.get("category", None)
+            sequence_number = self.kwargs.get("sequence_number", None)
+            if not sequence_number:
+                return Response(
+                    {"detail": "Sequence number is required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                choice = Puzzle.PuzzleType[category.upper()]
+            except KeyError:
+                return Response(
+                    {"detail": "Invalid puzzle category"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                puzzle = Puzzle.objects.filter(type=choice).order_by("date")[
+                    int(sequence_number) - 1
+                ]
+            except IndexError:
+                return Response(
+                    {"detail": "No puzzle found for sequence number"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = PuzzleSerializer(puzzle, context={"request": request})
+
+            data = serializer.data
+            # Return the serialized data
+            return Response(data, status=status.HTTP_200_OK)
         except Puzzle.DoesNotExist:
             return Response(
                 {"detail": "Puzzle not found."}, status=status.HTTP_404_NOT_FOUND
