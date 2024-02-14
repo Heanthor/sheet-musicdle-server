@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User, Group
+from django.db.models import Max
 from rest_framework import serializers
 
 from sheet_api.models import Puzzle, Work, Composer
@@ -18,14 +19,28 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
 
 class PuzzleSerializer(serializers.ModelSerializer):
     sequence_number = serializers.SerializerMethodField()
+    is_latest = serializers.SerializerMethodField()
 
     class Meta:
         model = Puzzle
-        fields = ["id", "date", "answer", "sheet_image_url", "sequence_number"]
+        fields = [
+            "id",
+            "date",
+            "answer",
+            "sheet_image_url",
+            "sequence_number",
+            "is_latest",
+        ]
         depth = 2
 
     def get_sequence_number(self, obj: Puzzle):
         return Puzzle.objects.filter(type=obj.type, date__lte=obj.date).count()
+
+    def get_is_latest(self, obj: Puzzle):
+        return (
+            obj.date
+            == Puzzle.objects.filter(type=obj.type).aggregate(Max("date"))["date__max"]
+        )
 
 
 class ComposerSerializer(serializers.ModelSerializer):

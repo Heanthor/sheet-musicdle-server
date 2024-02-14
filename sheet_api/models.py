@@ -27,21 +27,6 @@ class Puzzle(models.Model):
     answer = models.ForeignKey("Work", on_delete=models.CASCADE)
     sheet_image_url = models.CharField(max_length=200)
 
-    def save(
-        self, force_insert=False, force_update=False, using=None, update_fields=None
-    ):
-        # TODO
-        # get rid of this change
-        # instead, make the latest puzzle endpoint return the sequence number for that category
-        # when requesting a specific puzzle, calculate the date from the offset number
-        # we do not need to save the sequence number in the database
-
-        # when creating a new puzzle, increment the sequence id for puzzles of the same type
-        # self.puzzle_sequence_id = (
-        #     Puzzle.objects.filter(type=self.type, date__lte=self.date).count() + 1
-        # )
-        super().save(force_insert, force_update, using, update_fields)
-
     def __str__(self):
         return f"{self.date}: {self.answer}"
 
