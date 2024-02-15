@@ -29,6 +29,8 @@ DEBUG = True
 if ENV == "prod":
     DEBUG = False
 
+LOG_QUERIES = False
+
 ALLOWED_HOSTS = []
 if ENV == "prod":
     ALLOWED_HOSTS = ["sheet-musicle.com", "api.sheet-musicle.com"]
@@ -135,6 +137,29 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+if LOG_QUERIES:
+    LOGGING = {
+        "version": 1,
+        "filters": {
+            "require_debug_true": {
+                "()": "django.utils.log.RequireDebugTrue",
+            }
+        },
+        "handlers": {
+            "console": {
+                "level": "DEBUG",
+                "filters": ["require_debug_true"],
+                "class": "logging.StreamHandler",
+            }
+        },
+        "loggers": {
+            "django.db.backends": {
+                "level": "DEBUG",
+                "handlers": ["console"],
+            }
+        },
+    }
 
 
 # Internationalization
