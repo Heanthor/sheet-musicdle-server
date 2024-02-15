@@ -40,17 +40,18 @@ class PuzzleSerializer(serializers.ModelSerializer):
         return Puzzle.objects.filter(type=obj.type, date__lte=obj.date).count()
 
     def get_is_latest(self, obj: Puzzle):
+        max_category_date = Puzzle.objects.filter(type=obj.type).aggregate(Max("date"))[
+            "date__max"
+        ]
         if HIDE_NEW_PUZZLES:
             # lie and say a puzzle with a date equal to today is the latest,
             # even if there are more puzzles in the database
             tz_date = get_timezone_aware_date()
 
-            return obj.date == tz_date
+            # in case data for a category isn't caught up to the current day, still return true for latest
+            return obj.date == tz_date or (tz_date > max_category_date == obj.date)
 
-        return (
-            obj.date
-            == Puzzle.objects.filter(type=obj.type).aggregate(Max("date"))["date__max"]
-        )
+        return obj.date == max_category_date
 
 
 class ComposerSerializer(serializers.ModelSerializer):
