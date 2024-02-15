@@ -1,3 +1,6 @@
+import datetime
+
+import pytz
 from django.contrib.auth.models import User, Group
 from rest_framework import viewsets, generics, status
 from rest_framework import permissions
@@ -14,6 +17,8 @@ from sheet_api.serializers import (
     ComposerSerializer,
     WorkWithoutComposerSerializer,
 )
+from sheet_api.time_helpers import get_timezone_aware_date
+from sheet_musicle_server.settings import HIDE_NEW_PUZZLES
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -107,7 +112,15 @@ class LatestPuzzleByCategoryView(APIView):
                     {"detail": "Invalid puzzle category"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            puzzle = Puzzle.objects.filter(type=choice).latest("date")
+
+            # use user-supplied timezone if valid, otherwise use US eastern time
+            timezone = self.request.query_params.get("timezone", None)
+            now_date = get_timezone_aware_date(timezone)
+
+            # get the latest puzzle with a date before or equal to today
+            puzzle = Puzzle.objects.filter(type=choice, date__lte=now_date).latest(
+                "date"
+            )
 
             serializer = PuzzleSerializer(puzzle, context={"request": request})
 
@@ -140,15 +153,24 @@ class PuzzleBySequenceNumberView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            no_puzzle_found_response = Response(
+                {"detail": "No puzzle found for sequence number"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
             try:
                 puzzle = Puzzle.objects.filter(type=choice).order_by("date")[
                     int(sequence_number) - 1
                 ]
             except IndexError:
-                return Response(
-                    {"detail": "No puzzle found for sequence number"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+                return no_puzzle_found_response
+
+            if HIDE_NEW_PUZZLES:
+                # do not allow puzzles for dates after today to be returned
+                timezone = self.request.query_params.get("timezone", None)
+                now_date = get_timezone_aware_date(timezone)
+
+                if puzzle.date > now_date:
+                    return no_puzzle_found_response
 
             serializer = PuzzleSerializer(puzzle, context={"request": request})
 

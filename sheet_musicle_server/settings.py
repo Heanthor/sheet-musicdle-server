@@ -31,8 +31,7 @@ if ENV == "prod":
 
 ALLOWED_HOSTS = []
 if ENV == "prod":
-    # TODO: remove wildcard
-    ALLOWED_HOSTS = ["sheet-musicle.com", "api.sheet-musicle.com", "*"]
+    ALLOWED_HOSTS = ["sheet-musicle.com", "api.sheet-musicle.com"]
     CORS_ALLOWED_ORIGINS = [
         "https://sheet-musicle.com",
         "https://api.sheet-musicle.com",
@@ -143,7 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "EST"
 
 USE_I18N = True
 
@@ -159,3 +158,10 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Application settings
+if ENV == "prod":
+    # if true, do not allow puzzles to be retrieved with dates greater than the current date
+    HIDE_NEW_PUZZLES = True
+else:
+    HIDE_NEW_PUZZLES = False

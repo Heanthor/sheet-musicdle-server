@@ -3,6 +3,8 @@ from django.db.models import Max
 from rest_framework import serializers
 
 from sheet_api.models import Puzzle, Work, Composer
+from sheet_api.time_helpers import get_timezone_aware_date
+from sheet_musicle_server.settings import HIDE_NEW_PUZZLES
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -38,6 +40,13 @@ class PuzzleSerializer(serializers.ModelSerializer):
         return Puzzle.objects.filter(type=obj.type, date__lte=obj.date).count()
 
     def get_is_latest(self, obj: Puzzle):
+        if HIDE_NEW_PUZZLES:
+            # lie and say a puzzle with a date equal to today is the latest,
+            # even if there are more puzzles in the database
+            tz_date = get_timezone_aware_date()
+
+            return obj.date == tz_date
+
         return (
             obj.date
             == Puzzle.objects.filter(type=obj.type).aggregate(Max("date"))["date__max"]
