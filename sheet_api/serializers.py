@@ -2,7 +2,7 @@ from django.contrib.auth.models import User, Group
 from django.db.models import Max
 from rest_framework import serializers
 
-from sheet_api.models import Puzzle, Work, Composer
+from sheet_api.models import Puzzle, Work, Composer, UsageEvent
 from sheet_api.time_helpers import get_timezone_aware_date
 from sheet_musicle_server.settings import HIDE_NEW_PUZZLES
 
@@ -93,3 +93,13 @@ class WorkWithoutComposerSerializer(serializers.ModelSerializer):
             "opus_number",
             "last_scanned",
         ]
+
+
+class UsageEventSerializer(serializers.ModelSerializer):
+    event_type = serializers.CharField(required=True)
+    puzzle = serializers.IntegerField(required=True)
+    event_body = serializers.JSONField(required=True)
+
+    class Meta:
+        model = UsageEvent
+        fields = ["event_type", "puzzle", "event_body", "event_time"]

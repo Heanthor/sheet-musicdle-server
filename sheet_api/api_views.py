@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Max, Min
 
-from sheet_api.models import Puzzle, Work, Composer
+from sheet_api.models import Puzzle, Work, Composer, UsageEvent
 from sheet_api.serializers import (
     UserSerializer,
     GroupSerializer,
@@ -16,6 +16,7 @@ from sheet_api.serializers import (
     WorkSerializer,
     ComposerSerializer,
     WorkWithoutComposerSerializer,
+    UsageEventSerializer,
 )
 from sheet_api.time_helpers import get_timezone_aware_date
 from sheet_musicle_server.settings import HIDE_NEW_PUZZLES
@@ -181,3 +182,40 @@ class PuzzleBySequenceNumberView(APIView):
             return Response(
                 {"detail": "Puzzle not found."}, status=status.HTTP_404_NOT_FOUND
             )
+
+
+class UsageEventView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def post(self, request):
+        serializer = UsageEventSerializer(data=request.data)
+
+        if serializer.is_valid():
+            data = serializer.validated_data
+
+            event_type = data["event_type"]
+            event_body = data["event_body"]
+            puzzle = data["puzzle"]
+
+            try:
+                event_type_choice = UsageEvent.EventType[event_type.upper()]
+            except KeyError:
+                return Response(
+                    {"detail": "Invalid event type"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not Puzzle.objects.filter(id=puzzle).exists():
+                return Response(
+                    {"detail": "Puzzle not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
+            UsageEvent.objects.create(
+                event_type=event_type_choice,
+                puzzle_id=puzzle,
+                event_body=event_body,
+            )
+
+            return Response(status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

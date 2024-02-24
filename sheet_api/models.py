@@ -77,3 +77,26 @@ class Work(models.Model):
 
     def __str__(self):
         return f"{self.composer.last_name}: {self.work_title} ({self.composition_year})"
+
+
+class UsageEvent(models.Model):
+    class EventType(models.TextChoices):
+        GUESS_MADE = "GUESS_MADE", _("Guess made")
+        PUZZLE_VIEWED = "PUZZLE_VIEWED", _("Puzzle viewed")
+        PUZZLE_SOLVED = "PUZZLE_SOLVED", _("Puzzle solved")
+        PUZZLE_FAILED = "PUZZLE_FAILED", _("Puzzle failed")
+
+    class Meta:
+        indexes = [models.Index(fields=["event_type"]), models.Index(fields=["puzzle"])]
+
+    event_type = models.CharField(
+        max_length=20,
+        choices=EventType.choices,
+    )
+    puzzle = models.ForeignKey("Puzzle", on_delete=models.CASCADE)
+    event_body = models.JSONField(max_length=1000)
+
+    event_time = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.event_type}: {self.event_body}"
