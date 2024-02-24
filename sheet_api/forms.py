@@ -28,3 +28,8 @@ class PuzzleForm(forms.ModelForm):
             )
 
         return super().save(commit)
+
+
+class ScraperAdminForm(forms.Form):
+    composer = forms.CharField()
+    dry_run = forms.BooleanField(required=False, initial=True)

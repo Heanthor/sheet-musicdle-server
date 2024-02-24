@@ -32,7 +32,6 @@ router.register(r"works", api_views.WorkViewSet)
 
 urlpatterns = [
     path("admin/", admin_site.urls),
-    path("admin/scan", trigger_scan),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("api/", include(router.urls)),
     path("api/works/<int:composer_id>", api_views.WorkFilterView.as_view()),

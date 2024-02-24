@@ -240,248 +240,273 @@ config_by_composer = {
 }
 
 
-def scrape_imslp_page(composer: str, page_text: str) -> list[ScrapedWork]:
-    soup = BeautifulSoup(page_text, "html.parser")
+class Parser:
+    DRY_RUN_PREFIX = "[DRY_RUN]"
 
-    works_table = soup.find("table", {"class": "wikitable sortable"})
-    # loop over the tr elements inside the tbody
-    first = True
-    opus_col = 0
-    name_col = -1
-    date_col = -1
-    key_col = -1
-    all_works = []
-    for row in works_table.find_all("tr"):
-        if first:
-            headers = row.find_all("th")
-            # first row is header
-            # find the index of the header with "Title" as the text
-            for i, header in enumerate(headers):
-                if header.text.strip() == "Title":
-                    name_col = i
-                elif is_date_col(composer, header.text.strip()):
-                    date_col = i
-                elif header.text.strip() == "Key":
-                    key_col = i
-                elif is_opus_col(composer, header.text.strip()):
-                    opus_col = i
-            first = False
-            continue
+    def __init__(self, writes_to_db: bool = False):
+        self.writes_to_db = writes_to_db
 
-        tds = row.find_all("td")
-        # delete display: none span from opus number
-        opus_number_td = tds[opus_col]
-        if opus_number_td.span:
-            opus_number_td.span.decompose()
+    def scrape_imslp_page(self, composer: str, page_text: str) -> list[ScrapedWork]:
+        soup = BeautifulSoup(page_text, "html.parser")
 
-        opus_number_str = opus_number_td.text.strip()
-        if opus_number_str == "":
-            # skip empty opus number
-            print(f"Skipping empty opus number")
-            continue
-        if len(tds) < name_col:
-            print(f"Skipping empty row")
-            continue
-
-        if opus_number_str == "—":
-            # skip no opus number
-            print(f"Skipping no opus number")
-            continue
-
-        work_title = tds[name_col].text.strip()
-        # process override if there are any
-        try:
-            work_override = config_by_composer[composer]["work_override"]
-            try:
-                work_override_result = work_override(work_title)
-                if work_override_result is not None:
-                    # replace whatever is in the table with handwritten result, then skip it
-                    all_works.append(work_override_result)
-                    continue
-            except InvalidWork:
-                # skip row entirely
+        works_table = soup.find("table", {"class": "wikitable sortable"})
+        # loop over the tr elements inside the tbody
+        first = True
+        opus_col = 0
+        name_col = -1
+        date_col = -1
+        key_col = -1
+        all_works = []
+        for row in works_table.find_all("tr"):
+            if first:
+                headers = row.find_all("th")
+                # first row is header
+                # find the index of the header with "Title" as the text
+                for i, header in enumerate(headers):
+                    if header.text.strip() == "Title":
+                        name_col = i
+                    elif is_date_col(composer, header.text.strip()):
+                        date_col = i
+                    elif header.text.strip() == "Key":
+                        key_col = i
+                    elif is_opus_col(composer, header.text.strip()):
+                        opus_col = i
+                first = False
                 continue
+
+            tds = row.find_all("td")
+            # delete display: none span from opus number
+            opus_number_td = tds[opus_col]
+            if opus_number_td.span:
+                opus_number_td.span.decompose()
+
+            opus_number_str = opus_number_td.text.strip()
+            if opus_number_str == "":
+                # skip empty opus number
+                print(f"Skipping empty opus number")
+                continue
+            if len(tds) < name_col:
+                print(f"Skipping empty row")
+                continue
+
+            if opus_number_str == "—":
+                # skip no opus number
+                print(f"Skipping no opus number")
+                continue
+
+            work_title = tds[name_col].text.strip()
+            # process override if there are any
+            try:
+                work_override = config_by_composer[composer]["work_override"]
+                try:
+                    work_override_result = work_override(work_title)
+                    if work_override_result is not None:
+                        # replace whatever is in the table with handwritten result, then skip it
+                        all_works.append(work_override_result)
+                        continue
+                except InvalidWork:
+                    # skip row entirely
+                    continue
+            except KeyError:
+                pass
+
+            if work_title == "":
+                print(f"Skipping empty work title")
+                continue
+            if "(" in work_title:
+                # grouping of works like Piano Trio (3), which will be scraped in upcoming rows
+                if re.search("\(\d+\)", work_title):
+                    continue
+
+            try:
+                # use custom function to parse opus number
+                opus_func = config_by_composer[composer]["opus_func"]
+                opus, num = opus_func(opus_number_str)
+                num = int(num)
+            except KeyError:
+                # fallback basic opus number handling
+                if "/" in opus_number_str:
+                    # opus is the first part, number is the second
+                    opus, num = opus_number_str.split("/")
+                    try:
+                        int(num)
+                    except ValueError:
+                        print(
+                            f"Skipping invalid opus number: {work_title} ({opus_number_str})"
+                        )
+                        continue
+                else:
+                    opus = opus_number_str
+                    num = -1
+            except ValueError:
+                print(f"Skipping invalid opus number: {work_title} ({opus_number_str})")
+                continue
+
+            # clean up date
+            date_str = tds[date_col].text.strip()
+            if date_str == "" or date_str == "—":
+                print(f"Skipping no year: {work_title}")
+                continue
+            elif "," in date_str:
+                date = date_str.split(",")[0]
+            elif "/" in date_str:
+                date = date_str.split("/")[0]
+            else:
+                date = date_str
+
+            if "\u2013" in date:
+                # take the "start" year of composition rather than the full range
+                date = date_str.split("\u2013")[0]
+            if "-" in date:
+                # some pages use the ascii character rather than unicode
+                date = date_str.split("-")[0]
+
+            if "before" in date:
+                # same deal
+                date = date_str.split("before")[0]
+            elif "or" in date:
+                # take the first date
+                date = date_str.split("or")[0]
+            elif "and" in date:
+                date = date_str.split("and")[0]
+
+            date = (
+                date.replace("?", "")
+                .replace("c.", "")
+                .replace("ca.", "")
+                .replace("after", "")
+                .replace("before", "")
+                .replace("post", "")
+                .strip()
+            )
+
+            if date == "":
+                print(f"Skipping no year: {work_title}")
+                continue
+
+            if "No." in work_title:
+                # if a work is only denoted by its number or is otherwise super generic, add the key to make distinguishing it a bit easier
+                if re.search(".+\s*No\.\s*\d+", work_title):
+                    key_text = tds[key_col].text.strip()
+                    work_title += " in " + key_text
+            elif (
+                work_title == "Impromptu"
+                or work_title == "Etude-tableau"
+                or work_title == "Intermezzo"
+            ):
+                key_text = tds[key_col].text.strip()
+                work_title += " in " + key_text
+
+            try:
+                # name override, in case imslp's name differs from what we want to display
+                name_func = config_by_composer[composer]["name"]
+                display_name = name_func()
+            except KeyError:
+                display_name = composer
+            # naive first/last split
+            firstname = display_name.split(" ")[0]
+            lastname = display_name.split(" ")[-1]
+            all_works.append(
+                ScrapedWork(
+                    composer_firstname=firstname,
+                    composer_lastname=lastname,
+                    composer_fullname=display_name,
+                    work_title=work_title,
+                    composition_year=int(date),
+                    opus=opus,
+                    opus_number=int(num),
+                )
+            )
+
+        try:
+            postprocess = config_by_composer[composer]["postprocess"]
+            all_works = postprocess(all_works)
         except KeyError:
             pass
 
-        if work_title == "":
-            print(f"Skipping empty work title")
-            continue
-        if "(" in work_title:
-            # grouping of works like Piano Trio (3), which will be scraped in upcoming rows
-            if re.search("\(\d+\)", work_title):
-                continue
+        return all_works
 
-        try:
-            # use custom function to parse opus number
-            opus_func = config_by_composer[composer]["opus_func"]
-            opus, num = opus_func(opus_number_str)
-            num = int(num)
-        except KeyError:
-            # fallback basic opus number handling
-            if "/" in opus_number_str:
-                # opus is the first part, number is the second
-                opus, num = opus_number_str.split("/")
-                try:
-                    int(num)
-                except ValueError:
-                    print(
-                        f"Skipping invalid opus number: {work_title} ({opus_number_str})"
-                    )
-                    continue
-            else:
-                opus = opus_number_str
-                num = -1
-        except ValueError:
-            print(f"Skipping invalid opus number: {work_title} ({opus_number_str})")
-            continue
+    def _parse_composer_imslp(self, composer: str) -> list[ScrapedWork]:
+        url = f"https://imslp.org/wiki/List_of_works_by_{composer.replace(' ', '_')}"
+        print("Requesting IMSLP...")
+        try_imslp = requests.get(url)
+        print("Got response.")
+        status = try_imslp.status_code
+        if status == 404:
+            print(f"Composer not found: {composer}")
+            return
 
-        # clean up date
-        date_str = tds[date_col].text.strip()
-        if date_str == "" or date_str == "—":
-            print(f"Skipping no year: {work_title}")
-            continue
-        elif "," in date_str:
-            date = date_str.split(",")[0]
-        elif "/" in date_str:
-            date = date_str.split("/")[0]
+        if status != 200:
+            raise Exception(f"Status ({status}) loading page: {url}")
+
+        print(f"Scraping IMSLP: {url}")
+        return self.scrape_imslp_page(composer, try_imslp.text)
+
+    def print_write_status(self):
+        if self.writes_to_db:
+            print("Writing to database")
         else:
-            date = date_str
+            print("Dry run, not writing to database")
 
-        if "\u2013" in date:
-            # take the "start" year of composition rather than the full range
-            date = date_str.split("\u2013")[0]
-        if "-" in date:
-            # some pages use the ascii character rather than unicode
-            date = date_str.split("-")[0]
+    def parse_composer(self, composer: str) -> list[ScrapedWork] | None:
+        self.print_write_status()
 
-        if "before" in date:
-            # same deal
-            date = date_str.split("before")[0]
-        elif "or" in date:
-            # take the first date
-            date = date_str.split("or")[0]
-        elif "and" in date:
-            date = date_str.split("and")[0]
+        return self._parse_composer_imslp(composer)
 
-        date = (
-            date.replace("?", "")
-            .replace("c.", "")
-            .replace("ca.", "")
-            .replace("after", "")
-            .replace("before", "")
-            .replace("post", "")
-            .strip()
-        )
+    def _parse_composer_impl(self, composer: str) -> list[ScrapedWork] | None:
+        return self._parse_composer_imslp(composer)
 
-        if date == "":
-            print(f"Skipping no year: {work_title}")
-            continue
+    def scrape_all_composers(self):
+        self.print_write_status()
 
-        if "No." in work_title:
-            # if a work is only denoted by its number or is otherwise super generic, add the key to make distinguishing it a bit easier
-            if re.search(".+\s*No\.\s*\d+", work_title):
-                key_text = tds[key_col].text.strip()
-                work_title += " in " + key_text
-        elif (
-            work_title == "Impromptu"
-            or work_title == "Etude-tableau"
-            or work_title == "Intermezzo"
-        ):
-            key_text = tds[key_col].text.strip()
-            work_title += " in " + key_text
+        with open(
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), COMPOSERS_FILE),
+            "r",
+        ) as f:
+            composer_list = json.loads(f.read())
+            for composer in composer_list:
+                print("Scraping composer: " + composer)
+                works = self._parse_composer_impl(composer)
+                if works is None:
+                    continue
 
-        try:
-            # name override, in case imslp's name differs from what we want to display
-            name_func = config_by_composer[composer]["name"]
-            display_name = name_func()
-        except KeyError:
-            display_name = composer
-        # naive first/last split
-        firstname = display_name.split(" ")[0]
-        lastname = display_name.split(" ")[-1]
-        all_works.append(
-            ScrapedWork(
-                composer_firstname=firstname,
-                composer_lastname=lastname,
-                composer_fullname=display_name,
-                work_title=work_title,
-                composition_year=int(date),
-                opus=opus,
-                opus_number=int(num),
-            )
-        )
+                self.save_composer_works(works)
 
-    try:
-        postprocess = config_by_composer[composer]["postprocess"]
-        all_works = postprocess(all_works)
-    except KeyError:
-        pass
+    def save_composer_works(self, works: list[ScrapedWork]):
+        for work in works:
+            if self.writes_to_db:
+                composer, created = Composer.objects.get_or_create(
+                    full_name=work.composer_fullname,
+                    first_name=work.composer_firstname,
+                    last_name=work.composer_lastname,
+                )
+                if created:
+                    print("Added composer: " + work.composer_fullname)
+            else:
+                print(f"{Parser.DRY_RUN_PREFIX} Composer: {work.composer_fullname}")
 
-    return all_works
-
-
-def parse_composer_imslp(composer: str) -> list[ScrapedWork]:
-    url = f"https://imslp.org/wiki/List_of_works_by_{composer.replace(' ', '_')}"
-    print("Requesting IMSLP...")
-    try_imslp = requests.get(url)
-    print("Got response.")
-    status = try_imslp.status_code
-    if status == 404:
-        print(f"Composer not found: {composer}")
-        return
-
-    if status != 200:
-        raise Exception(f"Status ({status}) loading page: {url}")
-
-    print(f"Scraping IMSLP: {url}")
-    return scrape_imslp_page(composer, try_imslp.text)
-
-
-def parse_composer(composer: str) -> list[ScrapedWork] | None:
-    return parse_composer_imslp(composer)
-
-
-def scrape_all_composers():
-    with open(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), COMPOSERS_FILE), "r"
-    ) as f:
-        composer_list = json.loads(f.read())
-        for composer in composer_list:
-            print("Scraping composer: " + composer)
-            works = parse_composer(composer)
-            if works is None:
-                continue
-
-            save_composer_works(works)
-
-
-def save_composer_works(works: list[ScrapedWork]):
-    for work in works:
-        composer, created = Composer.objects.get_or_create(
-            full_name=work.composer_fullname,
-            first_name=work.composer_firstname,
-            last_name=work.composer_lastname,
-        )
-        if created:
-            print("Added composer: " + work.composer_fullname)
-
-        work_title = work.work_title
-        if len(work.work_title) > 200:
-            work_title = work.work_title[:197] + "..."
-        try:
-            _, created = Work.objects.update_or_create(
-                work_title=work_title,
-                composition_year=work.composition_year,
-                opus=work.opus,
-                opus_number=work.opus_number,
-                composer=composer,
-                defaults={"last_scanned": timezone.now()},
-            )
-            if created:
-                print("Added work: " + work.work_title)
-        except IntegrityError as e:
-            print("Found duplicate work, skipping: " + str(e))
+            work_title = work.work_title
+            if len(work.work_title) > 200:
+                work_title = work.work_title[:197] + "..."
+            if self.writes_to_db:
+                try:
+                    _, created = Work.objects.update_or_create(
+                        work_title=work_title,
+                        composition_year=work.composition_year,
+                        opus=work.opus,
+                        opus_number=work.opus_number,
+                        composer=composer,
+                        defaults={"last_scanned": timezone.now()},
+                    )
+                    if created:
+                        print("Added work: " + work.work_title)
+                except IntegrityError as e:
+                    print("Found duplicate work, skipping: " + str(e))
+            else:
+                print(f"{Parser.DRY_RUN_PREFIX} Work: {work.work_title}")
+                print(f"{Parser.DRY_RUN_PREFIX}\tYear: {work.composition_year}")
+                print(f"{Parser.DRY_RUN_PREFIX}\tOpus: {work.opus}")
+                print(f"{Parser.DRY_RUN_PREFIX}\tOpus number: {work.opus_number}")
 
 
 if __name__ == "__main__":
@@ -516,7 +541,8 @@ if __name__ == "__main__":
         j = 0
         all_works = []
         for composer in composer_list:
-            works = parse_composer(composer)
+            p = Parser()
+            works = p.parse_composer(composer)
             if works is None:
                 continue
 

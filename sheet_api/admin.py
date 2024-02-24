@@ -1,22 +1,23 @@
 from django.contrib import admin
 
-from django.forms import forms
 from django.template.response import TemplateResponse
 from django.urls import path
 
+from sheet_api import forms
 from sheet_api.forms import PuzzleForm
 from sheet_api.models import Puzzle, Composer, Work
-from sheet_api.scraper.scraper import scrape_all_composers
+from sheet_api.scraper.scraper import Parser
 
 
 class MyAdminSite(admin.AdminSite):
     def get_urls(self):
         urls = super().get_urls()
-        my_urls = [path("scan/", self.admin_view(self.my_view))]
+        my_urls = [path("scan/", self.admin_view(self.scrape_view))]
         return my_urls + urls
 
-    def my_view(self, request):
-        scrape_all_composers()
+    def scrape_view(self, request):
+        p = Parser(writes_to_db=False)
+        p.scrape_all_composers()
         context = dict(
             # Include common variables for rendering the admin template.
             self.each_context(request),
@@ -24,6 +25,13 @@ class MyAdminSite(admin.AdminSite):
             # key=value,
         )
         return TemplateResponse(request, "admin/sheet_api/trigger_scan.html", context)
+
+    def index(self, request, extra_context=None):
+        # inject my form into the extra_context
+        extra_context = extra_context or {}
+        extra_context["scraper_form"] = forms.ScraperAdminForm()
+
+        return super().index(request, extra_context)
 
 
 admin_site = MyAdminSite(name="sheet_api_admin")
