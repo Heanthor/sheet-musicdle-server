@@ -15,10 +15,14 @@ from django.utils import timezone
 
 from sheet_api.models import Composer, Work
 
-COMPOSERS_FILE = "composers.json"
+COMPOSERS_FILE = "all_composers.json"
 
 
 class InvalidWork(Exception):
+    pass
+
+
+class InvalidComposer(Exception):
     pass
 
 
@@ -61,144 +65,191 @@ class ScrapedWork:
         )
 
 
-def beethoven_opus(opus_number_str: str):
-    if "/" in opus_number_str:
-        # opus is the first part, number is the second
-        opus, num = opus_number_str.split("/")
-    else:
-        opus = opus_number_str
+class OpusOverride:
+    pass
+
+    def get_opus(self, opus_number_str: str) -> tuple[str, int]:
+        raise NotImplementedError
+
+
+class BeethovenOpus(OpusOverride):
+    def get_opus(self, opus_number_str: str):
+        if "/" in opus_number_str:
+            # opus is the first part, number is the second
+            opus, num = opus_number_str.split("/")
+        else:
+            opus = opus_number_str
+            num = -1
+
+        return opus.strip(), num
+
+
+class MozartOpus(OpusOverride):
+    def get_opus(self, opus_number_str: str):
         num = -1
+        if "/" in opus_number_str:
+            # throw out alternative K numbers
+            opus = opus_number_str.split("/")[0].strip()
+        else:
+            opus = opus_number_str
+            num = -1
 
-    return opus.strip(), num
-
-
-def mozart_opus(opus_number_str: str):
-    num = -1
-    if "/" in opus_number_str:
-        # throw out alternative K numbers
-        opus = opus_number_str.split("/")[0].strip()
-    else:
-        opus = opus_number_str
-        num = -1
-
-    return opus.strip(), num
+        return opus.strip(), num
 
 
-def brahms_opus(opus_number_str: str):
-    opus_number_str = opus_number_str.replace("Op.", "")
-    if "/" in opus_number_str:
-        opus, num = opus_number_str.split("/")
-    else:
-        opus = opus_number_str
-        num = -1
+class BrahmsOpus(OpusOverride):
+    def get_opus(self, opus_number_str: str):
+        opus_number_str = opus_number_str.replace("Op.", "")
+        if "/" in opus_number_str:
+            opus, num = opus_number_str.split("/")
+        else:
+            opus = opus_number_str
+            num = -1
 
-    return opus.strip(), num
-
-
-def schubert_opus(opus_number_str: str):
-    opus_number_str = opus_number_str.replace("Op.", "").replace("*", "")
-    if "/" in opus_number_str:
-        opus, num = opus_number_str.split("/")
-    else:
-        opus = opus_number_str
-        num = -1
-
-    return opus.strip(), num
+        return opus.strip(), num
 
 
-def chopin_override(work_title: str) -> ScrapedWork | None:
-    if work_title == "E♭ major" or work_title == "G major":
-        # rowspan breaks the table for andante spinato
-        raise InvalidWork()
-    if work_title == "Andante spianato et Grande polonaise brillante":
-        return ScrapedWork(
-            composer_firstname="Frédéric",
-            composer_lastname="Chopin",
-            composer_fullname="Frédéric Chopin",
-            work_title="Andante spianato et Grande polonaise brillante",
-            composition_year=1834,
-            opus="22",
-            opus_number=-1,
-        )
+class SchubertOpus(OpusOverride):
+    def get_opus(self, opus_number_str: str):
+        opus_number_str = opus_number_str.replace("Op.", "").replace("*", "")
+        if "/" in opus_number_str:
+            opus, num = opus_number_str.split("/")
+        else:
+            opus = opus_number_str
+            num = -1
 
-    return None
+        return opus.strip(), num
 
 
-def tchaikovsky_opus(opus_number_str: str):
-    opus_number_str = opus_number_str.replace("//", "/")
-    if "/" in opus_number_str:
-        opus, num = opus_number_str.split("/")
-        int(num)
-    else:
-        opus = opus_number_str
-        num = -1
+class TchaikovskyOpus(OpusOverride):
+    def get_opus(self, opus_number_str: str):
+        opus_number_str = opus_number_str.replace("//", "/")
+        if "/" in opus_number_str:
+            opus, num = opus_number_str.split("/")
+            int(num)
+        else:
+            opus = opus_number_str
+            num = -1
 
-    return opus.strip(), num
-
-
-def tchaikovsky_name() -> str:
-    return "Pyotr Ilyich Tchaikovsky"
+        return opus.strip(), num
 
 
-def dedupe_postprocess(all_works: list[ScrapedWork]) -> list[ScrapedWork]:
-    # there are tons of duplicate opus/titles due to arrangements for orchestra/piano
-    seen = set()
-    uniq = []
-    for work in all_works:
-        if work not in seen:
-            seen.add(work)
-            uniq.append(work)
+class DebussyOpus(OpusOverride):
+    def get_opus(self, opus_number_str: str) -> tuple[str, int]:
+        opus_number_str = opus_number_str.replace("CD", "")
+        if "/" in opus_number_str:
+            opus, num = opus_number_str.split("/")
+        else:
+            opus = opus_number_str
+            num = -1
 
-    return uniq
-
-
-def debussy_opus_col(header_col: str) -> bool:
-    return header_col == "Lesure# (new)"
+        return opus.strip(), num
 
 
-def debussy_date_col(header_col: str) -> bool:
-    return header_col == "Year"
+class WorksOverride:
+    def get_works(self, work_title: str) -> ScrapedWork | None:
+        raise NotImplementedError
 
 
-def debussy_opus(opus_number_str: str):
-    opus_number_str = opus_number_str.replace("CD", "")
-    if "/" in opus_number_str:
-        opus, num = opus_number_str.split("/")
-    else:
-        opus = opus_number_str
-        num = -1
+class ChopinWorks(WorksOverride):
+    def get_works(self, work_title: str) -> ScrapedWork | None:
+        if work_title == "E♭ major" or work_title == "G major":
+            # rowspan breaks the table for andante spinato
+            raise InvalidWork()
+        if work_title == "Andante spianato et Grande polonaise brillante":
+            return ScrapedWork(
+                composer_firstname="Frédéric",
+                composer_lastname="Chopin",
+                composer_fullname="Frédéric Chopin",
+                work_title="Andante spianato et Grande polonaise brillante",
+                composition_year=1834,
+                opus="22",
+                opus_number=-1,
+            )
 
-    return opus.strip(), num
-
-
-def rach_opus_col(header_col: str) -> bool:
-    return header_col == "Op."
-
-
-def dvorak_opus_col(header_col: str) -> bool:
-    return header_col == "Op."
-
-
-def ravel_opus_col(header_col: str) -> bool:
-    return header_col == "M"
+        return None
 
 
-def ravel_opus(opus_number_str: str):
-    opus_number_str = opus_number_str.replace("M.", "")
-    if "/" in opus_number_str:
-        opus, num = opus_number_str.split("/")
-    else:
-        opus = opus_number_str
-        num = -1
+class NameOverride:
+    def get_name(self) -> str:
+        raise NotImplementedError
 
-    return opus.strip(), num
+
+class TchaikovskyName(NameOverride):
+    def get_name(self) -> str:
+        return "Pyotr Ilyich Tchaikovsky"
+
+
+class DateColOverride:
+    def get_date_col(self, header_col: str) -> bool:
+        raise NotImplementedError
+
+
+class DebussyDate(DateColOverride):
+    def get_date_col(self, header_col: str) -> bool:
+        return header_col == "Year"
+
+
+class OpusColOverride:
+    def get_opus_col(self, header_col: str) -> bool:
+        raise NotImplementedError
+
+
+class DebussyOpusCol(OpusColOverride):
+    def get_opus_col(self, header_col: str) -> bool:
+        return header_col == "Lesure# (new)"
+
+
+class RachOpusCol(OpusColOverride):
+    def get_opus_col(self, header_col: str) -> bool:
+        return header_col == "Op."
+
+
+class DvorakOpusCol(OpusColOverride):
+    def get_opus_col(self, header_col: str) -> bool:
+        return header_col == "Op."
+
+
+class RavelOpusCol(OpusColOverride):
+    def get_opus_col(self, header_col: str) -> bool:
+        return header_col == "M"
+
+
+class RavelOpus(OpusOverride):
+    def get_opus(self, opus_number_str: str) -> tuple[str, int]:
+        opus_number_str = opus_number_str.replace("M.", "")
+        if "/" in opus_number_str:
+            opus, num = opus_number_str.split("/")
+        else:
+            opus = opus_number_str
+            num = -1
+
+        return opus.strip(), num
+
+
+class PostprocessWorks:
+    def postprocess(self, all_works: list[ScrapedWork]) -> list[ScrapedWork]:
+        raise NotImplementedError
+
+
+class Dedupe(PostprocessWorks):
+    def postprocess(self, all_works: list[ScrapedWork]) -> list[ScrapedWork]:
+        # there are tons of duplicate opus/titles due to arrangements for orchestra/piano
+        seen = set()
+        uniq = []
+        for work in all_works:
+            if work not in seen:
+                seen.add(work)
+                uniq.append(work)
+
+        return uniq
 
 
 def is_opus_col(composer: str, header_col: str) -> bool:
     # some composers have different catalogs which replace opus numbers, even in the header
     try:
-        opus_col_func = config_by_composer[composer]["opus_col_func"]
-        return opus_col_func(header_col)
+        opus_col_cl = config_by_composer[composer].opus_col_override
+        return opus_col_cl.get_opus_col(header_col)
     except KeyError:
         return header_col == "Opus"
 
@@ -206,37 +257,58 @@ def is_opus_col(composer: str, header_col: str) -> bool:
 def is_date_col(composer: str, header_col: str) -> bool:
     # same goes for year
     try:
-        date_col_func = config_by_composer[composer]["date_col_func"]
-        return date_col_func(header_col)
+        date_col_cl = config_by_composer[composer].date_col_override
+        return date_col_cl.get_date_col(header_col)
     except KeyError:
         return header_col == "Date"
 
 
-config_by_composer = {
-    "Ludwig van Beethoven": {"opus_func": beethoven_opus},
-    "Wolfgang Amadeus Mozart": {"opus_func": mozart_opus},
-    "Frédéric Chopin": {"work_override": chopin_override},
-    "Johannes Brahms": {"opus_func": brahms_opus},
-    "Pyotr Tchaikovsky": {
-        "opus_func": tchaikovsky_opus,
-        "postprocess": dedupe_postprocess,
-        "name": tchaikovsky_name,
-    },
-    "Franz Schubert": {"opus_func": schubert_opus, "postprocess": dedupe_postprocess},
-    "Claude Debussy": {
-        "opus_col_func": debussy_opus_col,
-        "date_col_func": debussy_date_col,
-        "opus_func": debussy_opus,
-    },
-    "Sergei Rachmaninoff": {
-        "opus_col_func": rach_opus_col,
-        "postprocess": dedupe_postprocess,
-    },
-    "Antonín Dvořák": {
-        "opus_col_func": rach_opus_col,
-        "postprocess": dedupe_postprocess,
-    },
-    "Maurice Ravel": {"opus_col_func": rach_opus_col, "opus_func": ravel_opus},
+class ComposerOptions:
+    def __init__(
+        self,
+        opus_override: OpusOverride = None,
+        works_override: WorksOverride = None,
+        name_override: NameOverride = None,
+        opus_col_override: OpusColOverride = None,
+        date_col_override: DateColOverride = None,
+        postprocess: PostprocessWorks = None,
+    ):
+        self.opus_override = opus_override
+        self.works_override = works_override
+        self.name_override = name_override
+        self.opus_col_override = opus_col_override
+        self.date_col_override = date_col_override
+        self.postprocess = postprocess
+
+
+config_by_composer: dict[str, ComposerOptions] = {
+    "Ludwig van Beethoven": ComposerOptions(opus_override=BeethovenOpus()),
+    "Wolfgang Amadeus Mozart": ComposerOptions(opus_override=MozartOpus()),
+    "Frédéric Chopin": ComposerOptions(works_override=ChopinWorks()),
+    "Johannes Brahms": ComposerOptions(opus_override=BrahmsOpus()),
+    "Pyotr Tchaikovsky": ComposerOptions(
+        opus_override=TchaikovskyOpus(),
+        name_override=TchaikovskyName(),
+        postprocess=Dedupe(),
+    ),
+    "Franz Schubert": ComposerOptions(
+        opus_override=SchubertOpus(), postprocess=Dedupe()
+    ),
+    "Claude Debussy": ComposerOptions(
+        opus_override=DebussyOpus(),
+        opus_col_override=DebussyOpusCol(),
+        date_col_override=DebussyDate(),
+    ),
+    "Sergei Rachmaninoff": ComposerOptions(
+        opus_col_override=RachOpusCol(), postprocess=Dedupe()
+    ),
+    "Antonín Dvořák": ComposerOptions(
+        opus_col_override=DvorakOpusCol(), postprocess=Dedupe()
+    ),
+    "Maurice Ravel": ComposerOptions(
+        opus_col_override=RavelOpusCol(),
+        opus_override=RavelOpus(),
+    ),
 }
 
 
@@ -245,6 +317,16 @@ class Parser:
 
     def __init__(self, writes_to_db: bool = False):
         self.writes_to_db = writes_to_db
+        self.composer_list = []
+        self._init_composer_list()
+
+    def _init_composer_list(self):
+        with open(
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), COMPOSERS_FILE),
+            "r",
+        ) as f:
+            composer_list = json.loads(f.read())
+            self.composer_list = composer_list
 
     def scrape_imslp_page(self, composer: str, page_text: str) -> list[ScrapedWork]:
         soup = BeautifulSoup(page_text, "html.parser")
@@ -297,9 +379,9 @@ class Parser:
             work_title = tds[name_col].text.strip()
             # process override if there are any
             try:
-                work_override = config_by_composer[composer]["work_override"]
+                work_override_cl = config_by_composer[composer].works_override
                 try:
-                    work_override_result = work_override(work_title)
+                    work_override_result = work_override_cl.get_works(work_title)
                     if work_override_result is not None:
                         # replace whatever is in the table with handwritten result, then skip it
                         all_works.append(work_override_result)
@@ -320,8 +402,8 @@ class Parser:
 
             try:
                 # use custom function to parse opus number
-                opus_func = config_by_composer[composer]["opus_func"]
-                opus, num = opus_func(opus_number_str)
+                opus_func_cl = config_by_composer[composer].opus_override
+                opus, num = opus_func_cl.get_opus(opus_number_str)
                 num = int(num)
             except KeyError:
                 # fallback basic opus number handling
@@ -399,8 +481,8 @@ class Parser:
 
             try:
                 # name override, in case imslp's name differs from what we want to display
-                name_func = config_by_composer[composer]["name"]
-                display_name = name_func()
+                name_func_cl = config_by_composer[composer].name_override
+                display_name = name_func_cl.get_name()
             except KeyError:
                 display_name = composer
             # naive first/last split
@@ -419,8 +501,8 @@ class Parser:
             )
 
         try:
-            postprocess = config_by_composer[composer]["postprocess"]
-            all_works = postprocess(all_works)
+            postprocess_cl = config_by_composer[composer].postprocess
+            all_works = postprocess_cl.postprocess(all_works)
         except KeyError:
             pass
 
@@ -448,10 +530,14 @@ class Parser:
         else:
             print("Dry run, not writing to database")
 
-    def parse_composer(self, composer: str) -> list[ScrapedWork] | None:
+    def scrape_composer(self, composer: str):
         self.print_write_status()
 
-        return self._parse_composer_imslp(composer)
+        if composer not in self.composer_list:
+            raise InvalidComposer(f"Composer not found: {composer}")
+
+        works = self._parse_composer_imslp(composer)
+        self.save_composer_works(works)
 
     def _parse_composer_impl(self, composer: str) -> list[ScrapedWork] | None:
         return self._parse_composer_imslp(composer)
@@ -459,18 +545,13 @@ class Parser:
     def scrape_all_composers(self):
         self.print_write_status()
 
-        with open(
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), COMPOSERS_FILE),
-            "r",
-        ) as f:
-            composer_list = json.loads(f.read())
-            for composer in composer_list:
-                print("Scraping composer: " + composer)
-                works = self._parse_composer_impl(composer)
-                if works is None:
-                    continue
+        for composer in self.composer_list:
+            print("Scraping composer: " + composer)
+            works = self._parse_composer_impl(composer)
+            if works is None:
+                continue
 
-                self.save_composer_works(works)
+            self.save_composer_works(works)
 
     def save_composer_works(self, works: list[ScrapedWork]):
         for work in works:
@@ -542,7 +623,7 @@ if __name__ == "__main__":
         all_works = []
         for composer in composer_list:
             p = Parser()
-            works = p.parse_composer(composer)
+            works = p.scrape_composer(composer)
             if works is None:
                 continue
 

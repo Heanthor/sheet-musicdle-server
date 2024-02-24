@@ -21,11 +21,11 @@
 
 {% block content %}
     <div id="content-main">
-        {#    <a class="button my-button" href="/test">Test button</a>#}
         {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
     </div>
 
-    <form action="/admin/scan" method="post">
+    <h2>Composer Scan Console</h2>
+    <form action="/admin/scan/" method="post">
         {% csrf_token %}
         {{ scraper_form }}
         <br />

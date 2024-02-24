@@ -2,5 +2,23 @@
 
 </head>
 <body>
-<h1>Scan done</h1>
+{%  if form_errors|length %}
+    <h1>Invalid form</h1>
+    <ul>
+    {%  for error in form_errors %}
+        <li>{{ error }}</li>
+    {% endfor %}
+    </ul>
+{% elif errors|length %}
+    <h1>Error in scan</h1>
+    <ul>
+    {%  for error in errors %}
+        <li>{{ error }}</li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <h1>Scan done</h1>
+{% endif %}
+
+<a href="/admin">Back</a>
 </body>

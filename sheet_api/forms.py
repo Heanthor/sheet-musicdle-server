@@ -3,6 +3,7 @@ from django.core.files.uploadedfile import UploadedFile
 
 from sheet_api.models import Puzzle
 from sheet_api.s3 import upload_sheet_music_file
+from sheet_api.scraper.scraper import Parser
 
 
 class PuzzleForm(forms.ModelForm):
@@ -31,5 +32,7 @@ class PuzzleForm(forms.ModelForm):
 
 
 class ScraperAdminForm(forms.Form):
-    composer = forms.CharField()
+    composer = forms.ChoiceField(
+        choices=[(composer, composer) for composer in Parser().composer_list]
+    )
     dry_run = forms.BooleanField(required=False, initial=True)
