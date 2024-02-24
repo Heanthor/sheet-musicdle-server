@@ -96,6 +96,7 @@ class UsageEvent(models.Model):
     puzzle = models.ForeignKey("Puzzle", on_delete=models.CASCADE)
     event_body = models.JSONField(max_length=1000)
 
+    session_id = models.CharField(max_length=36, blank=True, null=True)
     event_time = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

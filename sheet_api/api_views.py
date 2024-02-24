@@ -19,7 +19,7 @@ from sheet_api.serializers import (
     UsageEventSerializer,
 )
 from sheet_api.time_helpers import get_timezone_aware_date
-from sheet_musicle_server.settings import HIDE_NEW_PUZZLES
+from sheet_musicle_server.settings import HIDE_NEW_PUZZLES, SKIP_USAGE_EVENT_WRITE
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -197,6 +197,7 @@ class UsageEventView(APIView):
             event_type = data["event_type"]
             event_body = data["event_body"]
             puzzle = data["puzzle"]
+            session_id = data.get("session_id", None)
 
             try:
                 event_type_choice = UsageEvent.EventType[event_type.upper()]
@@ -210,11 +211,17 @@ class UsageEventView(APIView):
                     {"detail": "Puzzle not found"}, status=status.HTTP_404_NOT_FOUND
                 )
 
-            UsageEvent.objects.create(
-                event_type=event_type_choice,
-                puzzle_id=puzzle,
-                event_body=event_body,
-            )
+            if SKIP_USAGE_EVENT_WRITE:
+                print(
+                    f"Got usage event: {event_type_choice} for puzzle {puzzle}: {session_id} - {event_body}"
+                )
+            else:
+                UsageEvent.objects.create(
+                    event_type=event_type_choice,
+                    puzzle_id=puzzle,
+                    event_body=event_body,
+                    session_id=session_id,
+                )
 
             return Response(status=status.HTTP_201_CREATED)
         else:

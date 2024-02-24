@@ -102,4 +102,4 @@ class UsageEventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UsageEvent
-        fields = ["event_type", "puzzle", "event_body", "event_time"]
+        fields = ["event_type", "puzzle", "event_body", "session_id", "event_time"]

@@ -188,5 +188,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 if ENV == "prod":
     # if true, do not allow puzzles to be retrieved with dates greater than the current date
     HIDE_NEW_PUZZLES = True
+    SKIP_USAGE_EVENT_WRITE = False
 else:
     HIDE_NEW_PUZZLES = False
+    SKIP_USAGE_EVENT_WRITE = True
