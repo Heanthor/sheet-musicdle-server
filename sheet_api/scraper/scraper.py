@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
 import re
 
 import requests
@@ -14,235 +13,40 @@ from django.db import IntegrityError
 from django.utils import timezone
 
 from sheet_api.models import Composer, Work
+from sheet_api.scraper.custom_scrapers import HandelScraper
+from sheet_api.scraper.overrides import (
+    SiteOverride,
+    OpusOverride,
+    WorksOverride,
+    NameOverride,
+    OpusColOverride,
+    DateColOverride,
+    PostprocessWorks,
+    BeethovenOpus,
+    MozartOpus,
+    ChopinWorks,
+    BrahmsOpus,
+    TchaikovskyOpus,
+    TchaikovskyName,
+    Dedupe,
+    SchubertOpus,
+    DebussyOpus,
+    DebussyOpusCol,
+    DebussyDate,
+    RachOpusCol,
+    DvorakOpusCol,
+    RavelOpusCol,
+    RavelOpus,
+    InvalidWork,
+)
+from sheet_api.scraper.page_helpers import get_page_text
+from sheet_api.scraper.scraped_work import ScrapedWork
 
 COMPOSERS_FILE = "all_composers.json"
 
 
-class InvalidWork(Exception):
-    pass
-
-
 class InvalidComposer(Exception):
     pass
-
-
-@dataclass
-class ScrapedWork:
-    composer_firstname: str
-    composer_lastname: str
-    composer_fullname: str
-    work_title: str
-    composition_year: int
-    opus: str
-    opus_number: int
-
-    def __hash__(self) -> int:
-        # purposefully omit composition year
-        # because sometimes otherwise identical arrangements
-        # were composed in different years
-        return hash(
-            (
-                self.composer_firstname,
-                self.composer_lastname,
-                self.composer_fullname,
-                self.work_title,
-                self.opus,
-                self.opus_number,
-            )
-        )
-
-    def __eq__(self, __value: object) -> bool:
-        # same as above
-        if not isinstance(__value, ScrapedWork):
-            return NotImplemented
-        return (
-            self.composer_firstname == __value.composer_firstname
-            and self.composer_lastname == __value.composer_lastname
-            and self.composer_fullname == __value.composer_fullname
-            and self.work_title == __value.work_title
-            and self.opus == __value.opus
-            and self.opus_number == __value.opus_number
-        )
-
-
-class OpusOverride:
-    pass
-
-    def get_opus(self, opus_number_str: str) -> tuple[str, int]:
-        raise NotImplementedError
-
-
-class BeethovenOpus(OpusOverride):
-    def get_opus(self, opus_number_str: str):
-        if "/" in opus_number_str:
-            # opus is the first part, number is the second
-            opus, num = opus_number_str.split("/")
-        else:
-            opus = opus_number_str
-            num = -1
-
-        return opus.strip(), num
-
-
-class MozartOpus(OpusOverride):
-    def get_opus(self, opus_number_str: str):
-        num = -1
-        if "/" in opus_number_str:
-            # throw out alternative K numbers
-            opus = opus_number_str.split("/")[0].strip()
-        else:
-            opus = opus_number_str
-            num = -1
-
-        return opus.strip(), num
-
-
-class BrahmsOpus(OpusOverride):
-    def get_opus(self, opus_number_str: str):
-        opus_number_str = opus_number_str.replace("Op.", "")
-        if "/" in opus_number_str:
-            opus, num = opus_number_str.split("/")
-        else:
-            opus = opus_number_str
-            num = -1
-
-        return opus.strip(), num
-
-
-class SchubertOpus(OpusOverride):
-    def get_opus(self, opus_number_str: str):
-        opus_number_str = opus_number_str.replace("Op.", "").replace("*", "")
-        if "/" in opus_number_str:
-            opus, num = opus_number_str.split("/")
-        else:
-            opus = opus_number_str
-            num = -1
-
-        return opus.strip(), num
-
-
-class TchaikovskyOpus(OpusOverride):
-    def get_opus(self, opus_number_str: str):
-        opus_number_str = opus_number_str.replace("//", "/")
-        if "/" in opus_number_str:
-            opus, num = opus_number_str.split("/")
-            int(num)
-        else:
-            opus = opus_number_str
-            num = -1
-
-        return opus.strip(), num
-
-
-class DebussyOpus(OpusOverride):
-    def get_opus(self, opus_number_str: str) -> tuple[str, int]:
-        opus_number_str = opus_number_str.replace("CD", "")
-        if "/" in opus_number_str:
-            opus, num = opus_number_str.split("/")
-        else:
-            opus = opus_number_str
-            num = -1
-
-        return opus.strip(), num
-
-
-class WorksOverride:
-    def get_works(self, work_title: str) -> ScrapedWork | None:
-        raise NotImplementedError
-
-
-class ChopinWorks(WorksOverride):
-    def get_works(self, work_title: str) -> ScrapedWork | None:
-        if work_title == "E♭ major" or work_title == "G major":
-            # rowspan breaks the table for andante spinato
-            raise InvalidWork()
-        if work_title == "Andante spianato et Grande polonaise brillante":
-            return ScrapedWork(
-                composer_firstname="Frédéric",
-                composer_lastname="Chopin",
-                composer_fullname="Frédéric Chopin",
-                work_title="Andante spianato et Grande polonaise brillante",
-                composition_year=1834,
-                opus="22",
-                opus_number=-1,
-            )
-
-        return None
-
-
-class NameOverride:
-    def get_name(self) -> str:
-        raise NotImplementedError
-
-
-class TchaikovskyName(NameOverride):
-    def get_name(self) -> str:
-        return "Pyotr Ilyich Tchaikovsky"
-
-
-class DateColOverride:
-    def get_date_col(self, header_col: str) -> bool:
-        raise NotImplementedError
-
-
-class DebussyDate(DateColOverride):
-    def get_date_col(self, header_col: str) -> bool:
-        return header_col == "Year"
-
-
-class OpusColOverride:
-    def get_opus_col(self, header_col: str) -> bool:
-        raise NotImplementedError
-
-
-class DebussyOpusCol(OpusColOverride):
-    def get_opus_col(self, header_col: str) -> bool:
-        return header_col == "Lesure# (new)"
-
-
-class RachOpusCol(OpusColOverride):
-    def get_opus_col(self, header_col: str) -> bool:
-        return header_col == "Op."
-
-
-class DvorakOpusCol(OpusColOverride):
-    def get_opus_col(self, header_col: str) -> bool:
-        return header_col == "Op."
-
-
-class RavelOpusCol(OpusColOverride):
-    def get_opus_col(self, header_col: str) -> bool:
-        return header_col == "M"
-
-
-class RavelOpus(OpusOverride):
-    def get_opus(self, opus_number_str: str) -> tuple[str, int]:
-        opus_number_str = opus_number_str.replace("M.", "")
-        if "/" in opus_number_str:
-            opus, num = opus_number_str.split("/")
-        else:
-            opus = opus_number_str
-            num = -1
-
-        return opus.strip(), num
-
-
-class PostprocessWorks:
-    def postprocess(self, all_works: list[ScrapedWork]) -> list[ScrapedWork]:
-        raise NotImplementedError
-
-
-class Dedupe(PostprocessWorks):
-    def postprocess(self, all_works: list[ScrapedWork]) -> list[ScrapedWork]:
-        # there are tons of duplicate opus/titles due to arrangements for orchestra/piano
-        seen = set()
-        uniq = []
-        for work in all_works:
-            if work not in seen:
-                seen.add(work)
-                uniq.append(work)
-
-        return uniq
 
 
 def is_opus_col(composer: str, header_col: str) -> bool:
@@ -250,7 +54,7 @@ def is_opus_col(composer: str, header_col: str) -> bool:
     try:
         opus_col_cl = config_by_composer[composer].opus_col_override
         return opus_col_cl.get_opus_col(header_col)
-    except KeyError:
+    except KeyError | NotImplementedError:
         return header_col == "Opus"
 
 
@@ -259,20 +63,22 @@ def is_date_col(composer: str, header_col: str) -> bool:
     try:
         date_col_cl = config_by_composer[composer].date_col_override
         return date_col_cl.get_date_col(header_col)
-    except KeyError:
+    except KeyError | NotImplementedError:
         return header_col == "Date"
 
 
 class ComposerOptions:
     def __init__(
         self,
-        opus_override: OpusOverride = None,
-        works_override: WorksOverride = None,
-        name_override: NameOverride = None,
-        opus_col_override: OpusColOverride = None,
-        date_col_override: DateColOverride = None,
-        postprocess: PostprocessWorks = None,
+        page_override: SiteOverride = SiteOverride(),
+        opus_override: OpusOverride = OpusOverride(),
+        works_override: WorksOverride = WorksOverride(),
+        name_override: NameOverride = NameOverride(),
+        opus_col_override: OpusColOverride = OpusColOverride(),
+        date_col_override: DateColOverride = DateColOverride(),
+        postprocess: PostprocessWorks = PostprocessWorks(),
     ):
+        self.page_override = page_override
         self.opus_override = opus_override
         self.works_override = works_override
         self.name_override = name_override
@@ -282,6 +88,7 @@ class ComposerOptions:
 
 
 config_by_composer: dict[str, ComposerOptions] = {
+    "George Frideric Handel": ComposerOptions(page_override=HandelScraper()),
     "Ludwig van Beethoven": ComposerOptions(opus_override=BeethovenOpus()),
     "Wolfgang Amadeus Mozart": ComposerOptions(opus_override=MozartOpus()),
     "Frédéric Chopin": ComposerOptions(works_override=ChopinWorks()),
@@ -389,7 +196,7 @@ class Parser:
                 except InvalidWork:
                     # skip row entirely
                     continue
-            except KeyError:
+            except KeyError | NotImplementedError:
                 pass
 
             if work_title == "":
@@ -405,7 +212,7 @@ class Parser:
                 opus_func_cl = config_by_composer[composer].opus_override
                 opus, num = opus_func_cl.get_opus(opus_number_str)
                 num = int(num)
-            except KeyError:
+            except KeyError | NotImplementedError:
                 # fallback basic opus number handling
                 if "/" in opus_number_str:
                     # opus is the first part, number is the second
@@ -483,7 +290,7 @@ class Parser:
                 # name override, in case imslp's name differs from what we want to display
                 name_func_cl = config_by_composer[composer].name_override
                 display_name = name_func_cl.get_name()
-            except KeyError:
+            except KeyError | NotImplementedError:
                 display_name = composer
             # naive first/last split
             firstname = display_name.split(" ")[0]
@@ -503,26 +310,16 @@ class Parser:
         try:
             postprocess_cl = config_by_composer[composer].postprocess
             all_works = postprocess_cl.postprocess(all_works)
-        except KeyError:
+        except KeyError | NotImplementedError:
             pass
 
         return all_works
 
     def _parse_composer_imslp(self, composer: str) -> list[ScrapedWork]:
         url = f"https://imslp.org/wiki/List_of_works_by_{composer.replace(' ', '_')}"
-        print("Requesting IMSLP...")
-        try_imslp = requests.get(url)
-        print("Got response.")
-        status = try_imslp.status_code
-        if status == 404:
-            print(f"Composer not found: {composer}")
-            return
-
-        if status != 200:
-            raise Exception(f"Status ({status}) loading page: {url}")
-
+        text = get_page_text(url)
         print(f"Scraping IMSLP: {url}")
-        return self.scrape_imslp_page(composer, try_imslp.text)
+        return self.scrape_imslp_page(composer, text)
 
     def print_write_status(self):
         if self.writes_to_db:
@@ -536,7 +333,12 @@ class Parser:
         if composer not in self.composer_list:
             raise InvalidComposer(f"Composer not found: {composer}")
 
-        works = self._parse_composer_imslp(composer)
+        try:
+            page_cl = config_by_composer[composer].page_override
+            works = page_cl.scrape_page()
+        except KeyError | NotImplementedError:
+            works = self._parse_composer_imslp(composer)
+
         self.save_composer_works(works)
 
     def _parse_composer_impl(self, composer: str) -> list[ScrapedWork] | None:
@@ -547,7 +349,12 @@ class Parser:
 
         for composer in self.composer_list:
             print("Scraping composer: " + composer)
-            works = self._parse_composer_impl(composer)
+            try:
+                page_cl = config_by_composer[composer].page_override
+                works = page_cl.scrape_page()
+            except KeyError | NotImplementedError:
+                works = self._parse_composer_imslp(composer)
+
             if works is None:
                 continue
 
