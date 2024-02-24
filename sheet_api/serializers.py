@@ -62,6 +62,7 @@ class ComposerSerializer(serializers.ModelSerializer):
             "full_name",
             "first_name",
             "last_name",
+            "catalog_prefix",
             "born_year",
             "died_year",
             "last_scanned",

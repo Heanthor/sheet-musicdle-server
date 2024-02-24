@@ -48,6 +48,7 @@ class Composer(models.Model):
     # TODO: when years are scraped, born_year should not be nullable
     born_year = models.IntegerField(blank=True, null=True)
     died_year = models.IntegerField(blank=True, null=True)
+    catalog_prefix = models.CharField(max_length=10, blank=True, null=True)
 
     first_scanned = models.DateTimeField(auto_now_add=True)
     last_scanned = models.DateTimeField(default=timezone.now)
