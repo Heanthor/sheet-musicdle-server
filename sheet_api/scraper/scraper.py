@@ -54,7 +54,7 @@ def is_opus_col(composer: str, header_col: str) -> bool:
     try:
         opus_col_cl = config_by_composer[composer].opus_col_override
         return opus_col_cl.get_opus_col(header_col)
-    except KeyError | NotImplementedError:
+    except (KeyError, NotImplementedError):
         return header_col == "Opus"
 
 
@@ -63,7 +63,7 @@ def is_date_col(composer: str, header_col: str) -> bool:
     try:
         date_col_cl = config_by_composer[composer].date_col_override
         return date_col_cl.get_date_col(header_col)
-    except KeyError | NotImplementedError:
+    except (KeyError, NotImplementedError):
         return header_col == "Date"
 
 
@@ -196,7 +196,7 @@ class Parser:
                 except InvalidWork:
                     # skip row entirely
                     continue
-            except KeyError | NotImplementedError:
+            except (KeyError, NotImplementedError):
                 pass
 
             if work_title == "":
@@ -212,7 +212,7 @@ class Parser:
                 opus_func_cl = config_by_composer[composer].opus_override
                 opus, num = opus_func_cl.get_opus(opus_number_str)
                 num = int(num)
-            except KeyError | NotImplementedError:
+            except (KeyError, NotImplementedError):
                 # fallback basic opus number handling
                 if "/" in opus_number_str:
                     # opus is the first part, number is the second
@@ -290,7 +290,7 @@ class Parser:
                 # name override, in case imslp's name differs from what we want to display
                 name_func_cl = config_by_composer[composer].name_override
                 display_name = name_func_cl.get_name()
-            except KeyError | NotImplementedError:
+            except (KeyError, NotImplementedError):
                 display_name = composer
             # naive first/last split
             firstname = display_name.split(" ")[0]
@@ -310,7 +310,7 @@ class Parser:
         try:
             postprocess_cl = config_by_composer[composer].postprocess
             all_works = postprocess_cl.postprocess(all_works)
-        except KeyError | NotImplementedError:
+        except (KeyError, NotImplementedError):
             pass
 
         return all_works
@@ -336,7 +336,7 @@ class Parser:
         try:
             page_cl = config_by_composer[composer].page_override
             works = page_cl.scrape_page()
-        except KeyError | NotImplementedError:
+        except (KeyError, NotImplementedError):
             works = self._parse_composer_imslp(composer)
 
         self.save_composer_works(works)
@@ -352,7 +352,7 @@ class Parser:
             try:
                 page_cl = config_by_composer[composer].page_override
                 works = page_cl.scrape_page()
-            except KeyError | NotImplementedError:
+            except (KeyError, NotImplementedError):
                 works = self._parse_composer_imslp(composer)
 
             if works is None:
@@ -361,6 +361,7 @@ class Parser:
             self.save_composer_works(works)
 
     def save_composer_works(self, works: list[ScrapedWork]):
+        print("Total works: " + str(len(works)))
         for work in works:
             if self.writes_to_db:
                 composer, created = Composer.objects.get_or_create(
