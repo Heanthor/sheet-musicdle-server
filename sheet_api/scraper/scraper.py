@@ -38,6 +38,8 @@ from sheet_api.scraper.overrides import (
     RavelOpusCol,
     RavelOpus,
     InvalidWork,
+    SchubertOpusCol,
+    SchubertWorks,
 )
 from sheet_api.scraper.page_helpers import get_page_text
 from sheet_api.scraper.scraped_work import ScrapedWork
@@ -99,7 +101,10 @@ config_by_composer: dict[str, ComposerOptions] = {
         postprocess=Dedupe(),
     ),
     "Franz Schubert": ComposerOptions(
-        opus_override=SchubertOpus(), postprocess=Dedupe()
+        opus_override=SchubertOpus(),
+        postprocess=Dedupe(),
+        opus_col_override=SchubertOpusCol(),
+        works_override=SchubertWorks(),
     ),
     "Claude Debussy": ComposerOptions(
         opus_override=DebussyOpus(),
@@ -188,7 +193,9 @@ class Parser:
             try:
                 work_override_cl = config_by_composer[composer].works_override
                 try:
-                    work_override_result = work_override_cl.get_works(work_title)
+                    work_override_result = work_override_cl.get_works(
+                        work_title, opus_number_str
+                    )
                     if work_override_result is not None:
                         # replace whatever is in the table with handwritten result, then skip it
                         all_works.append(work_override_result)
@@ -261,11 +268,13 @@ class Parser:
 
             date = (
                 date.replace("?", "")
+                .replace("(?)", "")
                 .replace("c.", "")
                 .replace("ca.", "")
                 .replace("after", "")
                 .replace("before", "")
                 .replace("post", "")
+                .replace("ante", "")
                 .strip()
             )
 
@@ -282,6 +291,7 @@ class Parser:
                 work_title == "Impromptu"
                 or work_title == "Etude-tableau"
                 or work_title == "Intermezzo"
+                or work_title == "Piano Sonata"
             ):
                 key_text = tds[key_col].text.strip()
                 work_title += " in " + key_text

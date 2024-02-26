@@ -56,7 +56,7 @@ class BrahmsOpus(OpusOverride):
 
 class SchubertOpus(OpusOverride):
     def get_opus(self, opus_number_str: str):
-        opus_number_str = opus_number_str.replace("Op.", "").replace("*", "")
+        opus_number_str = opus_number_str.replace("D.", "").replace("*", "")
         if "/" in opus_number_str:
             opus, num = opus_number_str.split("/")
         else:
@@ -92,12 +92,12 @@ class DebussyOpus(OpusOverride):
 
 
 class WorksOverride:
-    def get_works(self, work_title: str) -> ScrapedWork | None:
+    def get_works(self, work_title: str, opus: str) -> ScrapedWork | None:
         raise NotImplementedError
 
 
 class ChopinWorks(WorksOverride):
-    def get_works(self, work_title: str) -> ScrapedWork | None:
+    def get_works(self, work_title: str, opus: str) -> ScrapedWork | None:
         if work_title == "E♭ major" or work_title == "G major":
             # rowspan breaks the table for andante spinato
             raise InvalidWork()
@@ -113,6 +113,15 @@ class ChopinWorks(WorksOverride):
             )
 
         return None
+
+
+class SchubertWorks(WorksOverride):
+    def get_works(self, work_title: str, opus: str) -> ScrapedWork | None:
+        # skip posthumous stuff
+        if "Anh." in opus:
+            raise InvalidWork()
+        if "deest" in opus:
+            raise InvalidWork()
 
 
 class NameOverride:
@@ -138,6 +147,11 @@ class DebussyDate(DateColOverride):
 class OpusColOverride:
     def get_opus_col(self, header_col: str) -> bool:
         raise NotImplementedError
+
+
+class SchubertOpusCol(OpusColOverride):
+    def get_opus_col(self, header_col: str) -> bool:
+        return header_col == "D."
 
 
 class DebussyOpusCol(OpusColOverride):
