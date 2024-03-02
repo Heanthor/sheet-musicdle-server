@@ -49,3 +49,5 @@ urlpatterns = [
     ),
     path("api/usage_events", api_views.UsageEventView.as_view()),
 ]
+
+urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]

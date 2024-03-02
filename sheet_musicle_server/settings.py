@@ -41,7 +41,11 @@ if ENV == "prod":
 else:
     CORS_ALLOW_ALL_ORIGINS = True
 
-DJANGO_CPROFILE_MIDDLEWARE_REQUIRE_STAFF = False
+    SILKY_PYTHON_PROFILER = True
+    SILKY_PYTHON_PROFILER_BINARY = True
+    SILKY_PYTHON_PROFILER_EXTENDED_FILE_NAME = True
+    SILKY_PYTHON_PROFILER_RESULT_PATH = "/profiles/"
+
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
@@ -58,6 +62,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
+    "silk",
 ]
 
 MIDDLEWARE = [
@@ -70,7 +75,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.gzip.GZipMiddleware",
-    "django_cprofile_middleware.middleware.ProfilerMiddleware",
+    "silk.middleware.SilkyMiddleware",
 ]
 
 
@@ -193,6 +198,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = "staticroot/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
