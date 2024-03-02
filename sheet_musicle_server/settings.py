@@ -172,7 +172,7 @@ if ENV == "prod":
         },
         "root": {
             "handlers": ["console"],
-            "level": "WARNING",
+            "level": "INFO",
         },
     }
 
