@@ -1,13 +1,9 @@
-import datetime
-
-import pytz
 from django.contrib.auth.models import User, Group
-from rest_framework import viewsets, generics, status
+from django.db.models import Max, Min
 from rest_framework import permissions
+from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Max, Min
-from silk.profiling.profiler import silk_profile
 
 from sheet_api.models import Puzzle, Work, Composer, UsageEvent
 from sheet_api.serializers import (
