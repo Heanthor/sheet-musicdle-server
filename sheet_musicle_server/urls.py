@@ -47,6 +47,7 @@ urlpatterns = [
         api_views.PuzzleBySequenceNumberView.as_view(),
     ),
     path("api/usage_events", api_views.UsageEventView.as_view()),
+    path("api/simple", api_views.SimpleView.as_view()),
 ]
 
 urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
