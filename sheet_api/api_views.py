@@ -132,6 +132,9 @@ class LatestPuzzleByCategoryView(APIView):
 
 
 class SimpleView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
     def get(self, request, **kwargs):
         return Response({"detail": "Simple view"}, status=status.HTTP_200_OK)
 
