@@ -62,7 +62,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
-    # "silk",
+    "silk",
 ]
 
 MIDDLEWARE = [
@@ -76,7 +76,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.gzip.GZipMiddleware",
-    # "silk.middleware.SilkyMiddleware",
+    "silk.middleware.SilkyMiddleware",
 ]
 
 

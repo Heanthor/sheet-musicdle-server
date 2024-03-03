@@ -14,11 +14,11 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from sheet_api.admin import admin_site
 from django.urls import path, include
 from rest_framework import routers
 
 from sheet_api import api_views
-from sheet_api.admin import admin_site
 
 router = routers.DefaultRouter()
 # "get all" routes
@@ -48,3 +48,5 @@ urlpatterns = [
     ),
     path("api/usage_events", api_views.UsageEventView.as_view()),
 ]
+
+urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]

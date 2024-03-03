@@ -1,9 +1,10 @@
 from django.contrib.auth.models import User, Group
-from django.db.models import Max, Min
-from rest_framework import permissions
 from rest_framework import viewsets, generics, status
+from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Max, Min
+from silk.profiling.profiler import silk_profile
 
 from sheet_api.models import Puzzle, Work, Composer, UsageEvent
 from sheet_api.serializers import (
@@ -100,7 +101,7 @@ class LatestPuzzleByCategoryView(APIView):
     permission_classes = []
     authentication_classes = []
 
-    # @silk_profile(name="LatestPuzzleByCategoryView")
+    @silk_profile(name="LatestPuzzleByCategoryView")
     def get(self, request, **kwargs):
         try:
             category = self.kwargs.get("category", None)
