@@ -10,7 +10,6 @@ click==8.1.7
 Django==4.2.6
 django-cors-headers==4.3.1
 django-cprofile-middleware==1.0.5
-django-silk==5.1.0
 djangorestframework==3.14.0
 gprof2dot==2022.7.29
 gunicorn==21.2.0
