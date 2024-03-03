@@ -104,7 +104,7 @@ class LatestPuzzleByCategoryView(APIView):
     permission_classes = []
     authentication_classes = []
 
-    @silk_profile(name="LatestPuzzleByCategoryView")
+    # @silk_profile(name="LatestPuzzleByCategoryView")
     def get(self, request, **kwargs):
         try:
             category = self.kwargs.get("category", None)
