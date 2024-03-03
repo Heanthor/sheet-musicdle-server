@@ -49,6 +49,7 @@ SILKY_PYTHON_PROFILER_RESULT_PATH = "profiles/"
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+CSRF_TRUSTED_ORIGINS = ["https://sheet-musicle.com", "https://api.sheet-musicle.com"]
 
 # Application definition
 
