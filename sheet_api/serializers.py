@@ -29,6 +29,7 @@ class PuzzleSerializer(serializers.ModelSerializer):
             "id",
             "date",
             "answer",
+            "difficulty",
             "type",
             "sheet_image_url",
             "sequence_number",

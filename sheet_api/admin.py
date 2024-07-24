@@ -69,10 +69,10 @@ class ComposerAdmin(admin.ModelAdmin):
 class PuzzleAdmin(admin.ModelAdmin):
     form = PuzzleForm
 
-    list_display = ("type", "answer", "date", "sheet_image_url")
+    list_display = ("type", "answer", "difficulty", "date", "sheet_image_url")
     search_fields = ("date", "answer")
 
-    list_filter = ("type",)
+    list_filter = ("type", "difficulty")
     ordering = ("type", "date")
     raw_id_fields = ("answer",)
 

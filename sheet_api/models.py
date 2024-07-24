@@ -14,6 +14,11 @@ class Puzzle(models.Model):
         CELLO = "C", _("Cello")
         ORCHESTRAL = "O", _("Orchestral")
 
+    class DifficultyRating(models.IntegerChoices):
+        EASY = 1, _("Easy")
+        MEDIUM = 2, _("Medium")
+        HARD = 3, _("Hard")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -27,10 +32,13 @@ class Puzzle(models.Model):
     type = models.CharField(max_length=5, choices=PuzzleType.choices)
     date = models.DateField()
     answer = models.ForeignKey("Work", on_delete=models.CASCADE)
+    difficulty = models.IntegerField(
+        choices=DifficultyRating.choices, default=DifficultyRating.MEDIUM
+    )
     sheet_image_url = models.CharField(max_length=200)
 
     def __str__(self):
-        return f"{self.date}: {self.answer}"
+        return f"{self.date} [{self.difficulty}]: {self.answer}"
 
 
 class Composer(models.Model):
